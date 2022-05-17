@@ -3,7 +3,7 @@ module github.com/runz0rd/gencon
 go 1.18
 
 require (
-	github.com/c-bata/go-prompt v0.2.6
+	github.com/c-bata/go-prompt v0.2.5
 	github.com/davecgh/go-spew v1.1.1
 )
 
