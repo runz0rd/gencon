@@ -10,6 +10,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+const methodSuffix = "Suggest"
+
 type SuggestConfig interface {
 	Completer(name string, d prompt.Document) []prompt.Suggest
 	DepsFilled(name string) bool
@@ -27,6 +29,7 @@ func (w Wizard) Run(c SuggestConfig) error {
 	return w.run("", c)
 }
 
+// depreacated, will be replaced with RunTags
 func (w Wizard) run(base string, c SuggestConfig) error {
 	rType := reflect.TypeOf(c).Elem()
 	var fields []string
@@ -82,7 +85,7 @@ func (w Wizard) RunTags(c interface{}) error {
 }
 
 func (w Wizard) runTags(base string, c interface{}) error {
-	//TODO test for struct and anon struct
+	//TODO implement for structs
 	rType := reflect.TypeOf(c).Elem()
 	var fields []string
 	for i := 0; i < rType.NumField(); i++ {
@@ -90,6 +93,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 	}
 
 	for i := 0; i < len(fields); i++ {
+		// TODO fix bug where there are only fields with unfilled deps
 		field := fields[i]
 		fieldPath := strings.TrimPrefix(strings.Join([]string{base, field}, "."), ".")
 		// spew.Dump(field)
@@ -142,14 +146,14 @@ func AreDependenciesFilled(s interface{}, deps []string) bool {
 }
 
 func GetFieldSuggest(s interface{}, field string) (prompt.Completer, error) {
-	name := fmt.Sprintf("%vSuggest", field)
-	method := GetMethod(s, name)
+	methodName := field + methodSuffix
+	method := GetMethod(s, methodName)
 	if !method.IsValid() {
-		return nil, fmt.Errorf("method %v is not valid or doesnt exist", name)
+		return nil, fmt.Errorf("method %v is not valid or doesnt exist", methodName)
 	}
 	callable, ok := method.Interface().(func(prompt.Document) []prompt.Suggest)
 	if !ok {
-		return nil, fmt.Errorf("method %v is not of prompt.Completer type", name)
+		return nil, fmt.Errorf("method %v does not implement prompt.Completer", methodName)
 	}
 	return callable, nil
 }
