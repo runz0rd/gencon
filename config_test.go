@@ -14,12 +14,16 @@ type desert struct {
 	}
 }
 
+func (c desert) CakeSuggest(d prompt.Document) []prompt.Suggest {
+	return []prompt.Suggest{{Text: "carrot"}, {Text: "chocolate"}}
+}
+
 type ExampleConfig struct {
 	Desert    desert `yaml:"desert,omitempty" depends:"Dish"`
 	Dish      string `yaml:"dish,omitempty"`
 	Side      string `yaml:"side,omitempty" depends:"Dish"`
 	Drink     string `yaml:"drink,omitempty" depends:"Dish,Side"`
-	Something struct {
+	something struct {
 		Else string
 	}
 }
