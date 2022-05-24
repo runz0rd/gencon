@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/c-bata/go-prompt"
+	"github.com/life4/genesis/slices"
 )
 
 const methodSuffix = "Suggest"
@@ -85,11 +86,18 @@ func (w Wizard) runTags(base string, c interface{}) error {
 }
 
 func (w Wizard) runSuggest(c interface{}, field, fieldPath string) (string, error) {
+	var result string
 	fs, err := GetFieldSuggest(c, field, fieldPath)
 	if err != nil {
 		return "", err
 	}
-	return prompt.Input(fmt.Sprintf("%v> ", fieldPath), fs, w.opts...), nil
+	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), fs, w.opts...)
+	if result == "" && !IsOmitempty(c, field) {
+		// run input as long as the selection result is "" and the field isnt omitempty
+		fmt.Printf("field %q should not be empty (use omitempty tag to avoid this)\n", field)
+		return w.runSuggest(c, field, fieldPath)
+	}
+	return result, nil
 }
 
 func GetDependencies(s interface{}, field string) []string {
@@ -149,4 +157,8 @@ func pType(t reflect.Type) reflect.Type {
 		}
 		t = t.Elem()
 	}
+}
+
+func IsOmitempty(s interface{}, field string) bool {
+	return slices.Contains(GetTag(s, field, "yaml"), "omitempty")
 }
