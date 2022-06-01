@@ -14,10 +14,11 @@ const methodSuffix = "Suggest"
 
 type Wizard struct {
 	opts []prompt.Option
+	sc   SuggestCache
 }
 
 func New(opts ...prompt.Option) *Wizard {
-	return &Wizard{opts: opts}
+	return &Wizard{opts: opts, sc: make(SuggestCache)}
 }
 
 func (w Wizard) Run(c interface{}) error {
@@ -85,13 +86,23 @@ func (w Wizard) runTags(base string, c interface{}) error {
 	return nil
 }
 
-func (w Wizard) runSuggest(c interface{}, field, fieldPath string) (string, error) {
+func (w *Wizard) runSuggest(c interface{}, field, fieldPath string) (string, error) {
 	var result string
-	fs, err := GetFieldSuggest(c, field, fieldPath)
+	fieldCompleter, err := GetFieldCompleter(c, field, fieldPath)
 	if err != nil {
 		return "", err
 	}
-	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), fs, w.opts...)
+	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), func(d prompt.Document) []prompt.Suggest {
+		text := strings.TrimSpace(d.Text)
+		fcResult := w.sc.Find(text)
+		if len(fcResult) > 0 {
+			// already present in cache, skip completer
+			return prompt.FilterContains(fcResult, text, true)
+		}
+		// cache completer results
+		w.sc[text] = fieldCompleter(d)
+		return prompt.FilterContains(w.sc[text], text, true)
+	}, w.opts...)
 	if result == "" && !IsOmitempty(c, field) {
 		// run input as long as the selection result is "" and the field isnt omitempty
 		fmt.Printf("field %q should not be empty (use omitempty tag to avoid this)\n", field)
@@ -119,7 +130,7 @@ func AreDependenciesFilled(s interface{}, deps []string) bool {
 	return true
 }
 
-func GetFieldSuggest(s interface{}, field, fieldPath string) (prompt.Completer, error) {
+func GetFieldCompleter(s interface{}, field, fieldPath string) (prompt.Completer, error) {
 	method := GetMethod(s, field+methodSuffix)
 	if !method.IsValid() {
 		return nil, fmt.Errorf("method %v is not valid or doesnt exist", fieldPath+methodSuffix)
@@ -161,4 +172,20 @@ func pType(t reflect.Type) reflect.Type {
 
 func IsOmitempty(s interface{}, field string) bool {
 	return slices.Contains(GetTag(s, field, "yaml"), "omitempty")
+}
+
+type SuggestCache map[string][]prompt.Suggest
+
+// find cached input that is a substring of findKey
+func (c SuggestCache) Find(findKey string) []prompt.Suggest {
+	var current string
+	for cachedKey := range c {
+		if strings.Contains(cachedKey, findKey) {
+			// if fuzzy.Match(v, key) {
+			if len(cachedKey) > len(current) {
+				current = cachedKey
+			}
+		}
+	}
+	return c[current]
 }

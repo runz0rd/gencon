@@ -54,7 +54,7 @@ func TestWizard_runTags(t *testing.T) {
 	}{
 		{"test", args{"", &ExampleConfig{}}, false},
 	}
-	w := Wizard{}
+	w := New(prompt.OptionShowCompletionAtStart())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := w.runTags(tt.args.base, tt.args.c); (err != nil) != tt.wantErr {
