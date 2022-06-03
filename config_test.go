@@ -7,6 +7,7 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"github.com/c-bata/go-prompt/completer"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type desert struct {
@@ -27,6 +28,7 @@ type ExampleConfig struct {
 	Side      string `yaml:"side" depends:"Dish"`
 	Drink     string `yaml:"drink,omitempty" depends:"Dish,Side"`
 	Path      string `yaml:"path,omitempty"`
+	AmIRight  bool   `yaml:"am_i_right,omitempty"`
 	something struct {
 		Else string
 	}
@@ -56,26 +58,31 @@ func (c ExampleConfig) PathSuggest(d prompt.Document) []prompt.Suggest {
 	return completer.Complete(d)
 }
 
+func (c ExampleConfig) AmIRightSuggest(d prompt.Document) []prompt.Suggest {
+	return []prompt.Suggest{{Text: "true"}, {Text: "0"}}
+}
+
 func TestWizard_runTags(t *testing.T) {
 	type args struct {
 		base string
-		c    interface{}
 	}
 	tests := []struct {
 		name    string
 		args    args
 		wantErr bool
 	}{
-		{"test", args{"", &ExampleConfig{}}, false},
+		{"test", args{""}, false},
 	}
 	w := New(
 		prompt.OptionShowCompletionAtStart(),
 		prompt.OptionCompletionWordSeparator(completer.FilePathCompletionSeparator))
 	for _, tt := range tests {
+		c := &ExampleConfig{}
 		t.Run(tt.name, func(t *testing.T) {
-			if err := w.runTags(tt.args.base, tt.args.c); (err != nil) != tt.wantErr {
+			if err := w.runTags(tt.args.base, c); (err != nil) != tt.wantErr {
 				t.Errorf("Wizard.runTags() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+		spew.Dump(c)
 	}
 }

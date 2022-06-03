@@ -81,9 +81,19 @@ func (w Wizard) runTags(base string, c interface{}) error {
 				return err
 			}
 			f.SetInt(intField)
+		case reflect.Bool:
+			stringField, err := w.runSuggest(c, field, fieldPath, sc)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			boolField, err := strconv.ParseBool(stringField)
+			if err != nil {
+				return err
+			}
+			f.SetBool(boolField)
 		}
 	}
-	// spew.Dump(c)
 	return nil
 }
 

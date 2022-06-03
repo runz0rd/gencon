@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/c-bata/go-prompt v0.2.5
+	github.com/davecgh/go-spew v1.1.1
 	github.com/life4/genesis v1.0.3
 )
 
