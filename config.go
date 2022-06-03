@@ -2,6 +2,7 @@ package gencon
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,11 +15,10 @@ const methodSuffix = "Suggest"
 
 type Wizard struct {
 	opts []prompt.Option
-	sc   SuggestCache
 }
 
 func New(opts ...prompt.Option) *Wizard {
-	return &Wizard{opts: opts, sc: make(SuggestCache)}
+	return &Wizard{opts: opts}
 }
 
 func (w Wizard) Run(c interface{}) error {
@@ -51,6 +51,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			i--
 			continue
 		}
+		sc := make(SuggestCache)
 		f := reflect.ValueOf(c).Elem().FieldByName(field)
 		switch f.Kind() {
 		case reflect.Struct:
@@ -63,14 +64,14 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			f.Set(reflect.ValueOf(structReflectValue.Interface()).Elem())
 			continue
 		case reflect.String:
-			stringField, err := w.runSuggest(c, field, fieldPath)
+			stringField, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
 			f.SetString(stringField)
 		case reflect.Int:
-			stringField, err := w.runSuggest(c, field, fieldPath)
+			stringField, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -86,7 +87,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 	return nil
 }
 
-func (w *Wizard) runSuggest(c interface{}, field, fieldPath string) (string, error) {
+func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCache) (string, error) {
 	var result string
 	fieldCompleter, err := GetFieldCompleter(c, field, fieldPath)
 	if err != nil {
@@ -94,19 +95,21 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string) (string, err
 	}
 	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), func(d prompt.Document) []prompt.Suggest {
 		text := strings.TrimSpace(d.Text)
-		fcResult := w.sc.Find(text)
-		if len(fcResult) > 0 {
-			// already present in cache, skip completer
-			return prompt.FilterContains(fcResult, text, true)
+		// lastWord := strings.TrimSpace(d.GetWordBeforeCursor())
+		cachedResults := sc.Find(text)
+		if len(cachedResults) > 0 && len(text) > 0 && !strings.Contains(text, string(os.PathSeparator)) {
+			// if were going through fs, dont offer from cache
+			// if already present in cache, skip completer
+			return filterSuggestions(text, cachedResults)
 		}
 		// cache completer results
-		w.sc[text] = fieldCompleter(d)
-		return prompt.FilterContains(w.sc[text], text, true)
+		sc[text] = fieldCompleter(d)
+		return filterSuggestions(text, sc[text])
 	}, w.opts...)
 	if result == "" && !IsOmitempty(c, field) {
 		// run input as long as the selection result is "" and the field isnt omitempty
 		fmt.Printf("field %q should not be empty (use omitempty tag to avoid this)\n", field)
-		return w.runSuggest(c, field, fieldPath)
+		return w.runSuggest(c, field, fieldPath, sc)
 	}
 	return result, nil
 }
@@ -188,4 +191,12 @@ func (c SuggestCache) Find(findKey string) []prompt.Suggest {
 		}
 	}
 	return c[current]
+}
+
+func filterSuggestions(text string, suggestions []prompt.Suggest) []prompt.Suggest {
+	if strings.Contains(text, string(os.PathSeparator)) {
+		// do not filter while completing fs
+		return suggestions
+	}
+	return prompt.FilterContains(suggestions, text, true)
 }

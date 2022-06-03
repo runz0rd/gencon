@@ -1,9 +1,12 @@
 package gencon
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/c-bata/go-prompt"
+	"github.com/c-bata/go-prompt/completer"
 )
 
 type desert struct {
@@ -23,6 +26,7 @@ type ExampleConfig struct {
 	Dish      string `yaml:"dish,omitempty"`
 	Side      string `yaml:"side" depends:"Dish"`
 	Drink     string `yaml:"drink,omitempty" depends:"Dish,Side"`
+	Path      string `yaml:"path,omitempty"`
 	something struct {
 		Else string
 	}
@@ -42,6 +46,16 @@ func (c ExampleConfig) SideSuggest(d prompt.Document) []prompt.Suggest {
 	return nil
 }
 
+func (c ExampleConfig) PathSuggest(d prompt.Document) []prompt.Suggest {
+	completer := completer.FilePathCompleter{
+		IgnoreCase: true,
+		Filter: func(fi os.FileInfo) bool {
+			return fi.IsDir() || strings.HasSuffix(fi.Name(), ".go")
+		},
+	}
+	return completer.Complete(d)
+}
+
 func TestWizard_runTags(t *testing.T) {
 	type args struct {
 		base string
@@ -54,7 +68,9 @@ func TestWizard_runTags(t *testing.T) {
 	}{
 		{"test", args{"", &ExampleConfig{}}, false},
 	}
-	w := New(prompt.OptionShowCompletionAtStart())
+	w := New(
+		prompt.OptionShowCompletionAtStart(),
+		prompt.OptionCompletionWordSeparator(completer.FilePathCompletionSeparator))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := w.runTags(tt.args.base, tt.args.c); (err != nil) != tt.wantErr {
