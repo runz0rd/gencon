@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/c-bata/go-prompt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/life4/genesis/slices"
 )
 
@@ -108,15 +107,12 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 		// text := strings.TrimSpace(d.Text)
 		lastWord := strings.TrimSpace(d.GetWordBeforeCursor())
 		cachedResults := sc.Find(lastWord)
-		spew.Dump(lastWord)
 		if len(cachedResults) > 0 && !strings.Contains(lastWord, string(os.PathSeparator)) {
 			// if were going through fs, dont offer from cache
 			// if already present in cache, skip completer
-			spew.Dump("cache")
 			return filterSuggestions(lastWord, cachedResults)
 		}
 		// cache completer results
-		spew.Dump("completer")
 		sc[lastWord] = fieldCompleter(d)
 		return filterSuggestions(lastWord, sc[lastWord])
 	}, w.opts...)
