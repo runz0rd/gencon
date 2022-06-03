@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/c-bata/go-prompt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/life4/genesis/slices"
 )
 
@@ -104,17 +105,20 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 		return "", err
 	}
 	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), func(d prompt.Document) []prompt.Suggest {
-		text := strings.TrimSpace(d.Text)
-		// lastWord := strings.TrimSpace(d.GetWordBeforeCursor())
-		cachedResults := sc.Find(text)
-		if len(cachedResults) > 0 && len(text) > 0 && !strings.Contains(text, string(os.PathSeparator)) {
+		// text := strings.TrimSpace(d.Text)
+		lastWord := strings.TrimSpace(d.GetWordBeforeCursor())
+		cachedResults := sc.Find(lastWord)
+		spew.Dump(lastWord)
+		if len(cachedResults) > 0 && !strings.Contains(lastWord, string(os.PathSeparator)) {
 			// if were going through fs, dont offer from cache
 			// if already present in cache, skip completer
-			return filterSuggestions(text, cachedResults)
+			spew.Dump("cache")
+			return filterSuggestions(lastWord, cachedResults)
 		}
 		// cache completer results
-		sc[text] = fieldCompleter(d)
-		return filterSuggestions(text, sc[text])
+		spew.Dump("completer")
+		sc[lastWord] = fieldCompleter(d)
+		return filterSuggestions(lastWord, sc[lastWord])
 	}, w.opts...)
 	if result == "" && !IsOmitempty(c, field) {
 		// run input as long as the selection result is "" and the field isnt omitempty

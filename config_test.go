@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/c-bata/go-prompt"
 	"github.com/c-bata/go-prompt/completer"
@@ -29,6 +30,7 @@ type ExampleConfig struct {
 	Drink     string `yaml:"drink,omitempty" depends:"Dish,Side"`
 	Path      string `yaml:"path,omitempty"`
 	AmIRight  bool   `yaml:"am_i_right,omitempty"`
+	RealSlow  string `yaml:"real_slow,omitempty"`
 	something struct {
 		Else string
 	}
@@ -59,6 +61,11 @@ func (c ExampleConfig) PathSuggest(d prompt.Document) []prompt.Suggest {
 }
 
 func (c ExampleConfig) AmIRightSuggest(d prompt.Document) []prompt.Suggest {
+	return []prompt.Suggest{{Text: "true"}, {Text: "0"}}
+}
+
+func (c ExampleConfig) RealSlowSuggest(d prompt.Document) []prompt.Suggest {
+	time.Sleep(1 * time.Second)
 	return []prompt.Suggest{{Text: "true"}, {Text: "0"}}
 }
 
