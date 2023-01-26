@@ -26,9 +26,9 @@ func (c desert) CakeSuggest(d prompt.Document) []prompt.Suggest {
 type ExampleConfig struct {
 	Desert    desert `yaml:"desert,omitempty" depends:"Dish"`
 	Dish      string `yaml:"dish,omitempty"`
-	Side      string `yaml:"side" depends:"Dish"`
+	Side      string `yaml:"side" depends:"Dish" default:"tt"`
 	Drink     string `yaml:"drink,omitempty" depends:"Dish,Side"`
-	Path      string `yaml:"path,omitempty"`
+	Path      string `yaml:"path,omitempty" default:"asd"`
 	AmIRight  bool   `yaml:"am_i_right,omitempty"`
 	RealSlow  string `yaml:"real_slow,omitempty"`
 	something struct {

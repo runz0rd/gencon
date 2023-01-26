@@ -64,30 +64,30 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			f.Set(reflect.ValueOf(structReflectValue.Interface()).Elem())
 			continue
 		case reflect.String:
-			stringField, err := w.runSuggest(c, field, fieldPath, sc)
+			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			f.SetString(stringField)
+			f.SetString(selected)
 		case reflect.Int:
-			stringField, err := w.runSuggest(c, field, fieldPath, sc)
+			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			intField, err := strconv.ParseInt(stringField, 0, 64)
+			intField, err := strconv.ParseInt(selected, 0, 64)
 			if err != nil {
 				return err
 			}
 			f.SetInt(intField)
 		case reflect.Bool:
-			stringField, err := w.runSuggest(c, field, fieldPath, sc)
+			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			boolField, err := strconv.ParseBool(stringField)
+			boolField, err := strconv.ParseBool(selected)
 			if err != nil {
 				return err
 			}
@@ -103,6 +103,7 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 	if err != nil {
 		return "", err
 	}
+	initialValue := GetDefault(c, field)
 	result = prompt.Input(fmt.Sprintf("%v> ", fieldPath), func(d prompt.Document) []prompt.Suggest {
 		// text := strings.TrimSpace(d.Text)
 		lastWord := strings.TrimSpace(d.GetWordBeforeCursor())
@@ -115,7 +116,7 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 		// cache completer results
 		sc[lastWord] = fieldCompleter(d)
 		return filterSuggestions(lastWord, sc[lastWord])
-	}, w.opts...)
+	}, append(w.opts, prompt.OptionInitialBufferText(initialValue))...)
 	if result == "" && !IsOmitempty(c, field) {
 		// run input as long as the selection result is "" and the field isnt omitempty
 		fmt.Printf("field %q should not be empty (use omitempty tag to avoid this)\n", field)
@@ -126,6 +127,15 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 
 func GetDependencies(s interface{}, field string) []string {
 	return GetTag(s, field, "depends")
+}
+
+func GetDefault(s interface{}, field string) string {
+	value := ""
+	values := GetTag(s, field, "default")
+	if len(values) > 0 {
+		value = values[0]
+	}
+	return value
 }
 
 func AreDependenciesFilled(s interface{}, deps []string) bool {
