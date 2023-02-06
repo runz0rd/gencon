@@ -82,7 +82,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			}
 			f.SetString(selected)
 		case reflect.Int:
-			if w.skipFilled && !f.IsZero() {
+			if w.skipFilled {
 				continue
 			}
 			selected, err := w.runSuggest(c, field, fieldPath, sc)
@@ -96,7 +96,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			}
 			f.SetInt(intField)
 		case reflect.Bool:
-			if w.skipFilled && !f.IsZero() {
+			if w.skipFilled {
 				continue
 			}
 			selected, err := w.runSuggest(c, field, fieldPath, sc)
