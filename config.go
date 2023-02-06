@@ -14,14 +14,22 @@ import (
 const methodSuffix = "Suggest"
 
 type Wizard struct {
-	opts []prompt.Option
+	promptOpts []prompt.Option
+	skipFilled bool
 }
 
-func New(opts ...prompt.Option) *Wizard {
-	return &Wizard{opts: opts}
+func New(opts ...Option) (*Wizard, error) {
+	w := Wizard{}
+	for _, opt := range opts {
+		if err := opt(&w); err != nil {
+			return nil, err
+		}
+	}
+	return &w, nil
 }
 
-func (w Wizard) Run(c interface{}) error {
+func (w *Wizard) Prompt(c interface{}, opts ...prompt.Option) error {
+	w.promptOpts = opts
 	return w.runTags("", c)
 }
 
@@ -64,6 +72,9 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			f.Set(reflect.ValueOf(structReflectValue.Interface()).Elem())
 			continue
 		case reflect.String:
+			if w.skipFilled && !f.IsZero() {
+				continue
+			}
 			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
@@ -71,6 +82,9 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			}
 			f.SetString(selected)
 		case reflect.Int:
+			if w.skipFilled && !f.IsZero() {
+				continue
+			}
 			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
@@ -82,6 +96,9 @@ func (w Wizard) runTags(base string, c interface{}) error {
 			}
 			f.SetInt(intField)
 		case reflect.Bool:
+			if w.skipFilled && !f.IsZero() {
+				continue
+			}
 			selected, err := w.runSuggest(c, field, fieldPath, sc)
 			if err != nil {
 				fmt.Println(err)
@@ -97,7 +114,7 @@ func (w Wizard) runTags(base string, c interface{}) error {
 	return nil
 }
 
-func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCache) (string, error) {
+func (w Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCache) (string, error) {
 	var result string
 	fieldCompleter, err := GetFieldCompleter(c, field, fieldPath)
 	if err != nil {
@@ -116,7 +133,7 @@ func (w *Wizard) runSuggest(c interface{}, field, fieldPath string, sc SuggestCa
 		// cache completer results
 		sc[lastWord] = fieldCompleter(d)
 		return filterSuggestions(lastWord, sc[lastWord])
-	}, append(w.opts, prompt.OptionInitialBufferText(initialValue))...)
+	}, append(w.promptOpts, prompt.OptionInitialBufferText(initialValue))...)
 	if result == "" && !IsOmitempty(c, field) {
 		// run input as long as the selection result is "" and the field isnt omitempty
 		fmt.Printf("field %q should not be empty (use omitempty tag to avoid this)\n", field)
